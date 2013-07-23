@@ -390,9 +390,8 @@ end;
 
 
 # Temporary function for crude parallelisation
-TempDec := function(table, alphabet, reps, label, relsX, maxIndex, maxCosets, newGen)
+TempDesc := function(table, alphabet, reps, label, relsX, maxIndex, maxCosets, newGen)
     local descendants, subgp;
-    
     descendants := DescendantSubgroups(
                            table,
                            alphabet,
@@ -401,10 +400,11 @@ TempDec := function(table, alphabet, reps, label, relsX, maxIndex, maxCosets, ne
                            relsX,
                            maxIndex,
                            maxCosets,
-                           false);
+                           true);
     for subgp in descendants do
         Add(subgp,newGen);
     od;
+   #Print(Size(descendants),"\n");
     return descendants;
 end;
 
@@ -455,7 +455,7 @@ DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, m
         Add(subgps, []);
         #Print("ADD ",table,"\n");
     fi;
-
+    
     # Expand the tree by attempting a forced coincidence of each pair (a,b)
     for b in Filtered([label..Size(table)], t->table[t]<>fail) do
         for a in Filtered([1..b-1], t->table[t]<>fail) do
@@ -468,15 +468,14 @@ DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, m
                 # Create a new thread?
                 if par then
                    #Print("Starting new thread (",a,",",b,")!\n");
-                    Add(tasks, RunTask(TempDec,childTable,alphabet,childReps,b,relsX,maxIndex,maxCosets,newGen));
+                    Add(tasks, RunTask(TempDesc,childTable,alphabet,childReps,b,relsX,maxIndex,maxCosets,newGen));
                 else
-                    Append(subgps, TempDec(childTable,alphabet,childReps,b,relsX,maxIndex,maxCosets,newGen) );
+                    Append(subgps, TempDesc(childTable,alphabet,childReps,b,relsX,maxIndex,maxCosets,newGen) );
                 fi;
             fi;
         od;
     od;
-
-    # Retrieve any threaded results
+    
     for task in tasks do
         Append(subgps, TaskResult(task));
     od;
@@ -537,7 +536,7 @@ LowIndexSubgroups := function(G, maxIndex)
     #Print(relsX);
 
     # Define a maximum number of cosets that may be defined before a coincidence is forced
-    maxCosets := maxIndex;
+    maxCosets := maxIndex + 1;
 
     # Enter recursive function
     subgps := DescendantSubgroups(table,alphabet,reps,2,relsX,maxIndex,maxCosets,true);
