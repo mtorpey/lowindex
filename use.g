@@ -9,7 +9,7 @@ Bench := function(f,G,N)
   tstart := MicroSeconds();
   f(G,N);
   tend := MicroSeconds();
-  return (tend-tstart) * 1.0 / 1000000;
+  return (tend-tstart) * 1.0 / 1000;
 end;
 
 # Create free group
