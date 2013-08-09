@@ -389,33 +389,13 @@ FirstInClass := function(table, alphabet)
 end;
 
 
-# Temporary function for crude parallelisation
-TempDesc := function(table, alphabet, reps, label, relsX, maxIndex, maxCosets, newGen)
-    local descendants, subgp;
-    descendants := DescendantSubgroups(
-                           table,
-                           alphabet,
-                           reps,
-                           label,
-                           relsX,
-                           maxIndex,
-                           maxCosets,
-                           true);
-    for subgp in descendants do
-        Add(subgp,newGen);
-    od;
-   #Print(Size(descendants),"\n");
-    return descendants;
-end;
-
-
 
 #####
 # DescendantSubgroups(table, alphabet, label, relsX, maxIndex, maxCosets)
 # Recursively finds all the descendants of this coset table which correspond to
 # subgroups of index at most maxIndex subject to all the relations in relsX.
 #####
-DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, maxCosets, par)
+DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs)
     local rel, b,       # Loop variables
           a, x,         # Coset-letter pair with no entry in table
           childTable,   # Copy of this table, to be modified
@@ -425,7 +405,8 @@ DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, m
           descendants,  # List of subgroups found recursively in a branch
           subgps,       # List of valid subgroups
           tasks,        # List of threaded tasks
-          task;         # Loop variable
+          task,         # Loop variable
+          newJob;       # New job to be added to the work queue
 
     subgps := [];
     tasks := [];
@@ -438,7 +419,7 @@ DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, m
                 x := alphabet[Position(table[a],fail)];
                 if not MakeAssignment(table, alphabet, reps, label, relsX, a, x, Size(table)+1) then
                     #Print("MakeAssignment failed!\n");
-                    return [];
+                    return;
                 fi;
                 break;
             fi;
@@ -447,12 +428,12 @@ DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, m
     
     if not FirstInClass(table, alphabet) then
        #Print("NOT!\n");
-        return [];
+        return;
     fi;
 
     # If the table is a complete and valid solution, add it
     if IsCompleteCosetTable(table) and Size(Filtered(table,t->t<>fail)) <= maxIndex then
-        Add(subgps, []);
+        SendChannel(resultsChan,reps);
         #Print("ADD ",table,"\n");
     fi;
     
@@ -465,23 +446,42 @@ DescendantSubgroups := function(table, alphabet, reps, label, relsX, maxIndex, m
                 # The new generator of the subgroup is a*b^-1
                 newGen := reps[a] * reps[b]^-1;
                 
-                # Create a new thread?
-                if par then
-                   #Print("Starting new thread (",a,",",b,")!\n");
-                    Add(tasks, RunTask(TempDesc,childTable,alphabet,childReps,b,relsX,maxIndex,maxCosets,newGen));
-                else
-                    Append(subgps, TempDesc(childTable,alphabet,childReps,b,relsX,maxIndex,maxCosets,newGen) );
-                fi;
+                # Add this to the work queue
+                newJob := rec(
+                              table := childTable,
+                              reps := childReps,
+                              label := b,
+                              gens := Concatenation(gens,[newGen])
+                              );
+                SendChannel(workQueue, newJob);
+                atomic numJobs do
+                    numJobs := numJobs + 1;
+                od;
             fi;
         od;
     od;
-    
-    for task in tasks do
-        Append(subgps, TaskResult(task));
-    od;
+end;
 
-    # Return the (possibly empty) list of subgroups, as lists of generators
-    return subgps;
+
+
+#####
+# Work(workQueue, resultsChan, numJobs, alphabet, relsX, maxIndex, maxCosets)
+# Checks the work queue for available tasks, calculates subgroups, and
+# sends output to the results channel
+#####
+Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets)
+    local j;
+    Print("Hello world from thread ",ThreadID(CurrentThread()),"\n");
+    while true do
+        j := ReceiveChannel(workQueue);
+        DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs);
+        atomic numJobs do
+            numJobs := numJobs - 1;
+            if numJobs = 0 then
+                SignalSemaphore(fin);
+            fi;
+        od;
+    od;
 end;
 
 
@@ -491,7 +491,7 @@ end;
 # Returns representatives of all subgroups of the finitely presented group G
 # of index no more than maxIndex.
 #####
-LowIndexSubgroups := function(G, maxIndex)
+LowIndexSubgroups := function(G, maxIndex, numThreads)
     local table,        # Coset table
           alphabet,     # Alphabet of coset table - generators and their inverses
           reps,         # Representatives for all defined cosets
@@ -501,17 +501,23 @@ LowIndexSubgroups := function(G, maxIndex)
           relsX,        # Cyclic conjugates of relsS by first letter
           maxCosets,    # Maximum number of cosets to define
           subgps,       # List of subgroups
+          subgp,        # Variable for a single subgroup
           elt,          # Current element
           letter,       # Loop variable for letters
           rel,          # Loop variable for relators
           i,            # Loop variable for subgroups
-          tables;       # List of coset tables for subgroups
+          tables,       # List of coset tables for subgroups
+          workers,      # List of worker threads
+          workQueue,    # Channel used to communicate jobs to threads
+          resultsChan,  # Channel for solutions
+          numJobs,      # Counter of how many jobs have not been completed
+          fin;          # Semaphore activated when all work is complete
 
     # Make some definitions
     gens := FreeGeneratorsOfFpGroup(G);
     rels := RelatorsOfFpGroup(G);
     #List(RelatorsOfFpGroup(G), x->ElementOfFpGroup(FamilyObj(gens[1]),x));
-    alphabet := Concatenation(gens, List(gens,x->x^-1));
+    alphabet := MakeImmutable(Concatenation(gens, List(gens,x->x^-1)));
 
     # Initialise the coset table with the coset representatives
     table := [];
@@ -532,14 +538,38 @@ LowIndexSubgroups := function(G, maxIndex)
     for letter in [1..Size(alphabet)] do
         relsX[letter] := Filtered(relsC, w -> Subword(w,1,1) = alphabet[letter]);
     od;
+    MakeImmutable(relsX);
 
     #Print(relsX);
 
     # Define a maximum number of cosets that may be defined before a coincidence is forced
     maxCosets := maxIndex + 1;
+    
+    # Create worker threads
+    workQueue := CreateChannel();
+    numJobs := 0;
+    fin := CreateSemaphore();
+    ShareObj(numJobs);
+    resultsChan := CreateChannel();
+    workers := List([1..numThreads-1], i->CreateThread(Work, workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets));
 
-    # Enter recursive function
-    subgps := DescendantSubgroups(table,alphabet,reps,2,relsX,maxIndex,maxCosets,true);
+    # Start function
+    DescendantSubgroups(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs);
+    
+    # Wait for all threads to finish, then kill all threads
+    WaitSemaphore(fin);
+    Perform(workers, KillThread);
+    
+    # Read results from results channel
+    subgps := [];
+    while true do
+        subgp := TryReceiveChannel(resultsChan,fail);
+        if subgp = fail then
+            break;
+        else
+            Add(subgps,subgp);
+        fi;        
+    od;
     
     # Convert these free elements to their corresponding elements in G
     subgps := List(subgps, subgp ->
