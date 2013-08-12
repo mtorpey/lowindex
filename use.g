@@ -4,10 +4,10 @@ MicroSeconds := function()
   t := CurrentTime();
   return t.tv_sec * 1000000 + t.tv_usec;
 end;
-Bench := function(f,G,N)
+Bench := function(f,G,N,P)
   local tstart, tend;
   tstart := MicroSeconds();
-  f(G,N);
+  f(G,N,P);
   tend := MicroSeconds();
   return (tend-tstart) * 1.0 / 1000;
 end;

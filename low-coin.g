@@ -433,7 +433,7 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
 
     # If the table is a complete and valid solution, add it
     if IsCompleteCosetTable(table) and Size(Filtered(table,t->t<>fail)) <= maxIndex then
-        SendChannel(resultsChan,reps);
+        SendChannel(resultsChan,StructuralCopy(reps));
         #Print("ADD ",table,"\n");
     fi;
     
@@ -441,7 +441,6 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
     for b in Filtered([label..Size(table)], t->table[t]<>fail) do
         for a in Filtered([1..b-1], t->table[t]<>fail) do
             childTable := ShallowCopyCosetTable(table);
-            childReps := ShallowCopy(reps);
             if Coincidence(childTable, alphabet, b, a, b, relsX) then
                 # The new generator of the subgroup is a*b^-1
                 newGen := reps[a] * reps[b]^-1;
@@ -449,13 +448,13 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
                 # Add this to the work queue
                 newJob := rec(
                               table := childTable,
-                              reps := childReps,
+                              reps := StructuralCopy(reps),
                               label := b,
                               gens := Concatenation(gens,[newGen])
                               );
                 SendChannel(workQueue, newJob);
                 atomic numJobs do
-                    numJobs := numJobs + 1;
+                    numJobs[1] := numJobs[1] + 1;
                 od;
             fi;
         od;
@@ -476,8 +475,8 @@ Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex
         j := ReceiveChannel(workQueue);
         DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs);
         atomic numJobs do
-            numJobs := numJobs - 1;
-            if numJobs = 0 then
+            numJobs[1] := numJobs[1] - 1;
+            if numJobs[1] = 0 then
                 SignalSemaphore(fin);
             fi;
         od;
@@ -547,11 +546,11 @@ LowIndexSubgroups := function(G, maxIndex, numThreads)
     
     # Create worker threads
     workQueue := CreateChannel();
-    numJobs := 0;
+    numJobs := [0];
     fin := CreateSemaphore();
     ShareObj(numJobs);
     resultsChan := CreateChannel();
-    workers := List([1..numThreads-1], i->CreateThread(Work, workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets));
+    workers := List([1..numThreads], i->CreateThread(Work, workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets));
 
     # Start function
     DescendantSubgroups(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs);
