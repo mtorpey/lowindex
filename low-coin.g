@@ -469,10 +469,13 @@ end;
 # sends output to the results channel
 #####
 Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets)
-    local j;
-    Print("Hello world from thread ",ThreadID(CurrentThread()),"\n");
+    local j;    # Record describing a job to be done
     while true do
         j := ReceiveChannel(workQueue);
+        if j = fail then
+            SendChannel(workQueue,fail);
+            break;
+        fi;
         DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs);
         atomic numJobs do
             numJobs[1] := numJobs[1] - 1;
@@ -557,7 +560,7 @@ LowIndexSubgroups := function(G, maxIndex, numThreads)
     
     # Wait for all threads to finish, then kill all threads
     WaitSemaphore(fin);
-    Perform(workers, KillThread);
+    SendChannel(workQueue,fail);
     
     # Read results from results channel
     subgps := [];
