@@ -395,7 +395,7 @@ end;
 # Recursively finds all the descendants of this coset table which correspond to
 # subgroups of index at most maxIndex subject to all the relations in relsX.
 #####
-DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs)
+DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst)
     local rel, b,       # Loop variables
           a, x,         # Coset-letter pair with no entry in table
           childTable,   # Copy of this table, to be modified
@@ -406,6 +406,7 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
           subgps,       # List of valid subgroups
           tasks,        # List of threaded tasks
           task,         # Loop variable
+          numBranches,
           newJob;       # New job to be added to the work queue
 
     subgps := [];
@@ -445,17 +446,21 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
                 # The new generator of the subgroup is a*b^-1
                 newGen := reps[a] * reps[b]^-1;
                 
-                # Add this to the work queue
-                newJob := rec(
-                              table := childTable,
-                              reps := StructuralCopy(reps),
-                              label := b,
-                              gens := Concatenation(gens,[newGen])
-                              );
-                SendChannel(workQueue, newJob);
-                atomic numJobs do
-                    numJobs[1] := numJobs[1] + 1;
-                od;
+                if depthFirst then
+                    DescendantSubgroups(childTable,alphabet,ShallowCopy(reps),Concatenation(gens,[newGen]),b,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,true);
+                else
+                    # Add this to the work queue
+                    newJob := rec(
+                                  table := childTable,
+                                  reps := ShallowCopy(reps),
+                                  label := b,
+                                  gens := Concatenation(gens,[newGen])
+                                  );
+                    SendChannel(workQueue, newJob);
+                    atomic numJobs do
+                        numJobs[1] := numJobs[1] + 1;
+                    od;
+                fi;
             fi;
         od;
     od;
@@ -468,17 +473,33 @@ end;
 # Checks the work queue for available tasks, calculates subgroups, and
 # sends output to the results channel
 #####
-Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets)
-    local j;    # Record describing a job to be done
+Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets, numWorkers)
+    local j,            # Record describing a job to be done
+          depthFirst;   # Whether to continue depth-first or not
+    
     while true do
+        # Read from the channel
         j := ReceiveChannel(workQueue);
+        
+        # If there is no more work, quit
         if j = fail then
             SendChannel(workQueue,fail);
             break;
         fi;
-        DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs);
+        
+        # Check the size of the work queue
+        # If there are jobs available, use depth-first
+        # Otherwise, create new jobs with breadth-first
+        atomic readonly numJobs do
+            depthFirst := numJobs > numWorkers;
+        od;
+        # Enter the function
+        DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst);
+        
+        # Decrement the job counter
         atomic numJobs do
             numJobs[1] := numJobs[1] - 1;
+            # If there are no jobs left, signal that all the work is done
             if numJobs[1] = 0 then
                 SignalSemaphore(fin);
             fi;
@@ -493,7 +514,7 @@ end;
 # Returns representatives of all subgroups of the finitely presented group G
 # of index no more than maxIndex.
 #####
-LowIndexSubgroups := function(G, maxIndex, numThreads)
+LowIndexSubgroups := function(G, maxIndex, numWorkers)
     local table,        # Coset table
           alphabet,     # Alphabet of coset table - generators and their inverses
           reps,         # Representatives for all defined cosets
@@ -553,10 +574,10 @@ LowIndexSubgroups := function(G, maxIndex, numThreads)
     fin := CreateSemaphore();
     ShareObj(numJobs);
     resultsChan := CreateChannel();
-    workers := List([1..numThreads], i->CreateThread(Work, workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets));
+    workers := List([1..numWorkers], i->CreateThread(Work, workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets, numWorkers));
 
     # Start function
-    DescendantSubgroups(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs);
+    DescendantSubgroups(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,false);
     
     # Wait for all threads to finish, then kill all threads
     WaitSemaphore(fin);
