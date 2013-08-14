@@ -433,7 +433,7 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
 
     # If the table is a complete and valid solution, add it
     if IsCompleteCosetTable(table) and Size(Filtered(table,t->t<>fail)) <= maxIndex then
-        SendChannel(resultsChan,StructuralCopy(reps));
+        SendChannel(resultsChan,StructuralCopy(gens));
         #Print("ADD ",table,"\n");
     fi;
     
@@ -464,7 +464,7 @@ end;
 
 
 #####
-# Work(workQueue, resultsChan, numJobs, alphabet, relsX, maxIndex, maxCosets)
+# Work(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets)
 # Checks the work queue for available tasks, calculates subgroups, and
 # sends output to the results channel
 #####
