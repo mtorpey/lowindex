@@ -566,6 +566,7 @@ InstallGlobalFunction(LowIndexSubgroups, function(G, maxIndex, numWorkers)
     # Wait for all threads to finish, then kill all threads
     WaitSemaphore(fin);
     SendChannel(workQueue,fail);
+    Perform(workers,WaitThread);
     
     # Read results from results channel
     subgps := [];
