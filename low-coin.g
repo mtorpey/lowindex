@@ -1,8 +1,20 @@
+# Declare functions
+DeclareGlobalFunction("IsCompleteCosetTable");
+DeclareGlobalFunction("ShallowCopyCosetTable");
+DeclareGlobalFunction("CyclicConjugates");
+DeclareGlobalFunction("Coincidence");
+DeclareGlobalFunction("MakeAssignment");
+DeclareGlobalFunction("Scan");
+DeclareGlobalFunction("FirstInClass");
+DeclareGlobalFunction("DescendantSubgroups");
+DeclareGlobalFunction("Work");
+DeclareGlobalFunction("LowIndexSubgroups");
+
 #####
 # IsCompleteCosetTable(table)
 # Returns true iff this coset table is complete
 #####
-IsCompleteCosetTable := function(table)
+InstallGlobalFunction(IsCompleteCosetTable, function(table)
     local row;  # Loop variable
 
     # Check for undefined values (fail)
@@ -14,7 +26,7 @@ IsCompleteCosetTable := function(table)
 
     # All values are defined
     return true;            
-end;
+end);
 
 
 
@@ -22,7 +34,7 @@ end;
 # ShallowCopyCosetTable(table)
 # Returns a shallow copy of the given coset table
 #####
-ShallowCopyCosetTable := function(table)
+InstallGlobalFunction(ShallowCopyCosetTable, function(table)
     local newTable,     # New table to be populated
           row;          # Loop variable
 
@@ -32,7 +44,7 @@ ShallowCopyCosetTable := function(table)
         Add(newTable,ShallowCopy(row));
     od;
     return newTable;
-end;
+end);
 
 
 
@@ -40,7 +52,7 @@ end;
 # CyclicConjugates(w)
 # Returns all cyclic conjugates of the associative word w.
 #####
-CyclicConjugates := function(w)
+InstallGlobalFunction(CyclicConjugates, function(w)
     local S, v;
     S := [];
     v := w;
@@ -49,7 +61,7 @@ CyclicConjugates := function(w)
         Add(S,v);
     until w = v;
     return Set(S);
-end;
+end);
 
 
 
@@ -58,7 +70,7 @@ end;
 # Combines two cosets a and b in the table, then scans them under relsX
 # Iff the label is violated, return false
 #####
-Coincidence := function(table, alphabet, label, a, b, relsX)
+InstallGlobalFunction(Coincidence, function(table, alphabet, label, a, b, relsX)
     local i,        # Row number in table
           j,        # Column number in row
           x, y,     # Pair of cosets to coincide next
@@ -155,35 +167,7 @@ Coincidence := function(table, alphabet, label, a, b, relsX)
     #Print("HAPPY!\n");
     # All scans produced valid results
     return true;
-end;
-
-
-
-#####
-# Renumber(table)
-# Removes any holes from the table, renumbering any remaining rows
-#####
-#Renumber := function(table)
-#    local i,j,k,row;    # Loop variables
-#
-#    # Delete all the redundant rows, and renumber
-#    for i in Reversed([1..Size(table)]) do
-#        if table[i] = fail then
-#            for j in [i+1..Length(table)] do
-#                # Decrement all occurrences of j
-#                for row in Filtered(table, r->r<>fail) do
-#                    for k in [1..Size(row)] do
-#                        if row[k] = j then
-#                            row[k] := j-1;
-#                        fi;
-#                    od;
-#                od;
-#            od;
-#            # Remove row i
-#            Remove(table,i);
-#        fi;
-#    od;
-#end;
+end);
 
 
 
@@ -193,7 +177,7 @@ end;
 # any deductions with respect to the relators given
 # Return true iff the assignment was successful
 #####
-MakeAssignment := function(table, alphabet, reps, label, relsX, a, x, b)
+InstallGlobalFunction(MakeAssignment, function(table, alphabet, reps, label, relsX, a, x, b)
     local posX,     # Position of letter x in the alphabet
           posXI,    # Position of x-inverse in the alphabet
           rel;      # Loop variable for a relator in relsX
@@ -227,7 +211,7 @@ MakeAssignment := function(table, alphabet, reps, label, relsX, a, x, b)
 
     # Successful assignment!
     return true;
-end;
+end);
 
 
 
@@ -236,7 +220,7 @@ end;
 # Scan coset 'a' under relation 'rel' and make any deductions
 # Iff any deductions violate the label, return false
 #####
-Scan := function(table, alphabet, label, a, rel, relsX)
+InstallGlobalFunction(Scan, function(table, alphabet, label, a, rel, relsX)
     local f,        # Coset being inspected in forward scan
           b,        # Coset being inspected in backward scan
           i,        # Location in rel in forward scan
@@ -308,7 +292,7 @@ Scan := function(table, alphabet, label, a, rel, relsX)
 
     # Scan completed successfully
     return true;
-end;
+end);
 
 
 
@@ -317,7 +301,7 @@ end;
 # See Holt, Eick & O'Brien 5.4.2 for details
 # Returns true iff this table could be the canonical representative of its conjugacy class
 #####
-FirstInClass := function(table, alphabet)
+InstallGlobalFunction(FirstInClass, function(table, alphabet)
     local mu,       # Maps new table to old
           v,        # Maps old table to new
           a,        # Loop variable for rows to try
@@ -386,7 +370,7 @@ FirstInClass := function(table, alphabet)
 
     # This might be the canonical representative
     return true;
-end;
+end);
 
 
 
@@ -395,7 +379,7 @@ end;
 # Recursively finds all the descendants of this coset table which correspond to
 # subgroups of index at most maxIndex subject to all the relations in relsX.
 #####
-DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst)
+InstallGlobalFunction(DescendantSubgroups, function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst)
     local rel, b,       # Loop variables
           a, x,         # Coset-letter pair with no entry in table
           childTable,   # Copy of this table, to be modified
@@ -464,7 +448,7 @@ DescendantSubgroups := function(table, alphabet, reps, gens, label, relsX, maxIn
             fi;
         od;
     od;
-end;
+end);
 
 
 
@@ -473,7 +457,7 @@ end;
 # Checks the work queue for available tasks, calculates subgroups, and
 # sends output to the results channel
 #####
-Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets, numWorkers)
+InstallGlobalFunction(Work, function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets, numWorkers)
     local j,            # Record describing a job to be done
           depthFirst;   # Whether to continue depth-first or not
     
@@ -505,7 +489,7 @@ Work := function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex
             fi;
         od;
     od;
-end;
+end);
 
 
 
@@ -514,7 +498,7 @@ end;
 # Returns representatives of all subgroups of the finitely presented group G
 # of index no more than maxIndex.
 #####
-LowIndexSubgroups := function(G, maxIndex, numWorkers)
+InstallGlobalFunction(LowIndexSubgroups, function(G, maxIndex, numWorkers)
     local table,        # Coset table
           alphabet,     # Alphabet of coset table - generators and their inverses
           reps,         # Representatives for all defined cosets
@@ -603,4 +587,4 @@ LowIndexSubgroups := function(G, maxIndex, numWorkers)
     
     # Return the subgroups made by these generators
     return List(subgps, subgp->Subgroup(G, subgp));
-end;
+end);
