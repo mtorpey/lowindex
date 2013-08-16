@@ -1,15 +1,68 @@
 \documentclass{beamer}
 \usepackage[UKenglish]{isodate}
+
+\title{The Low-Index Subgroups Algorithm}
+\subtitle{Approaches to parallelisation in HPC-GAP}
+\author{Michael Torpey}
+\institute{University of St Andrews}
+\date{21st August 2013}
+
 \renewcommand\mathfamilydefault{\rmdefault}
 \usecolortheme{albatross}
-\title{The Low-Index Subgroups Algorithm}
-\subtitle{Approaches to parallelisation in GAP}
-\author{Michael Torpey}
+\setbeamertemplate{navigation symbols}{}
 
 \begin{document}
+
 \maketitle
+
 \begin{frame}
   \frametitle{The question}
-  Given a finitely presented group $G = \langle X | R \rangle$, what are its subgroups of order no more than $N$?
+  Given a finitely presented group $G = \langle X | R \rangle$, what are its subgroups of index no more than $N$?
+  \begin{itemize}
+  \item<2-> $X = $ A set of generators, e.g.~$\{a,b\}$.
+  \item<3-> $R = $ A set of relators, e.g.~$\{a^2,b^3,(ab)^5\}$ such that $a^2=b^3=(ab)^5=1$.
+  \item<4-> $G = \{a,b | a^2=b^3=(ab)^5=1\} \cong A_5$
+  \end{itemize}
 \end{frame}
+
+\begin{frame}[t]
+  \frametitle{Coset enumeration}
+  \pause
+  Todd-Coxeter algorithm:
+  \pause
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+      $\phantom{a}H=1$ & & & 
+    \end{tabular}
+  \end{table}
+
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Coset enumeration}
+  Todd-Coxeter algorithm:
+\begin{table}
+  \begin{tabular}{r | c c c c}
+    & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+    $H=1$ & 2 & & \\
+    $Ha=2$ & & 1 & & 
+  \end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Coset enumeration}
+  Todd-Coxeter algorithm:
+\begin{table}
+  \begin{tabular}{r | c c c c}
+    & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+    $H=1$ & 2 & 2 & \\
+    $Ha=2$ & 1 & 1 & & 
+  \end{tabular}
+\end{table}
+\end{frame}
+
+
+
 \end{document}
