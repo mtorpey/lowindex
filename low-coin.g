@@ -475,7 +475,7 @@ InstallGlobalFunction(Work, function(workQueue, resultsChan, numJobs, fin, alpha
         # If there are jobs available, use depth-first
         # Otherwise, create new jobs with breadth-first
         atomic readonly numJobs do
-            depthFirst := numJobs > numWorkers;
+            depthFirst := numJobs[1] > numWorkers;
         od;
         # Enter the function
         DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst);
