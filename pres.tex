@@ -1,5 +1,7 @@
 \documentclass{beamer}
-\usepackage[UKenglish]{isodate}
+\usepackage{amsmath}
+\usepackage{color}
+\usepackage{cancel}
 
 \title{The Low-Index Subgroups Algorithm}
 \subtitle{Approaches to parallelisation in HPC-GAP}
@@ -25,6 +27,14 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}
+  \frametitle{The algorithm}
+  \begin{itemize}
+  \item ``Forced coincidence'' approach
+  \item Utilises Todd-Coxeter method for coset enumeration
+  \end{itemize}
+\end{frame}
+
 \begin{frame}[t]
   \frametitle{Coset enumeration}
   \pause
@@ -33,7 +43,7 @@
   \begin{table}
     \begin{tabular}{r | c c c c}
       & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
-      $\phantom{a}H=1$ & & & 
+      $\phantom{b^{-1}}H=1$ & & & \phantom{3} & \\ \\ \\ \\
     \end{tabular}
   \end{table}
 
@@ -42,27 +52,168 @@
 \begin{frame}[t]
   \frametitle{Coset enumeration}
   Todd-Coxeter algorithm:
-\begin{table}
-  \begin{tabular}{r | c c c c}
-    & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
-    $H=1$ & 2 & & \\
-    $Ha=2$ & & 1 & & 
-  \end{tabular}
-\end{table}
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+      $\phantom{b^{-1}}H=1$ & 2 & & \phantom{3} & \\
+      $Ha=2$ & & 1 & & \\ \\ \\
+    \end{tabular}
+  \end{table}
+
+  \begin{itemize}
+  \item SET $1^a=2$
+  \end{itemize}
 \end{frame}
 
 \begin{frame}[t]
   \frametitle{Coset enumeration}
   Todd-Coxeter algorithm:
-\begin{table}
-  \begin{tabular}{r | c c c c}
-    & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
-    $H=1$ & 2 & 2 & \\
-    $Ha=2$ & 1 & 1 & & 
-  \end{tabular}
-\end{table}
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+      $\phantom{b^{-1}}H=1$ & 2 & 2 & \phantom{3} & \\
+      $Ha=2$ & 1 & 1 & & \\ \\ \\
+    \end{tabular}
+  \end{table}
+
+  \begin{itemize}
+  \item SET $1^a=2$  
+  \item SCAN $a^2$ on coset $1$: \\ $1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 1$
+  \end{itemize}
 \end{frame}
 
+\begin{frame}[t]
+  \frametitle{Coset enumeration}
+  Todd-Coxeter algorithm:
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+      $\phantom{b^{-1}}H=1$  & 2 & 2 & 3 &   \\
+      $Ha=2$ & 1 & 1 &   &   \\
+      $Hb=3$ &   &   &   & 1 \\ \\
+    \end{tabular}
+  \end{table}
 
+  \begin{itemize}
+  \item SET $1^a=2$  
+  \item SCAN $a^2$ on coset $1$: \\ $ 1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 1$
+  \item SET $1^b = 3$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Coset enumeration}
+  Todd-Coxeter algorithm:
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+      $H=1$  & 2 & 2 & 3 & 4 \\
+      $Ha=2$ & 1 & 1 &   &   \\
+      $Hb=3$ &   &   &   & 1 \\
+      $Hb^{-1}=4$ && & 1 &
+    \end{tabular}
+  \end{table}
+
+  \begin{itemize}
+  \item SET $1^a=2$  
+  \item SCAN $a^2$ on coset $1$: \\ $ 1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 1$
+  \item SET $1^b = 3$
+  \item SET $1^b = 4$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]
+  \frametitle{Coset enumeration}
+  Todd-Coxeter algorithm:
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ & $b$ & $b^{-1}$ \\ \hline
+      $H=1$  & 2 & 2 & 3 & 4 \\
+      $Ha=2$ & 1 & 1 &   &   \\
+      $Hb=3$ &   &   & 4 & 1 \\
+      $Hb^{-1}=4$ && & 1 & 3
+    \end{tabular}
+  \end{table}
+
+  \begin{itemize}
+  \item SET $1^a=2$  
+  \item SCAN $a^2$ on coset $1$: \\ $ 1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 1$
+  \item SET $1^b = 3$
+  \item SET $1^b = 4$
+  \item SCAN $b^3$ on coset $4$: \\ $ 4 \overset{b}{\rightarrow} 1 \overset{b}{\rightarrow} 3 \overset{b}{\rightarrow} 4$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Coincidences}
+  Sometimes we may encounter a coincidence. \pause
+
+  Example:
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ \\ \hline
+      1 & 2 & \\
+      2 & \phantom{1} 3 \phantom{1} & 1 \\
+      3 &   & 2
+    \end{tabular}
+  \end{table}
+  \pause
+  \begin{itemize}
+  \item SCAN $a^2$ on coset $1$ \pause
+  \item $ 1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 3$ \pause
+  \item But we should have $ 1 \overset{a}{\rightarrow} \overset{a}{\rightarrow} 1$ \pause
+  \item Hence $1$ and $3$ describe the same coset, and they can be combined
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Coincidences}
+  Sometimes we may encounter a coincidence.
+
+  Example:
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ \\ \hline
+      1 & 2 & {\color{red}2}\\
+      2 & \phantom{1} \cancel{3} {\color{red}1} & 1 \\
+      \cancel{3} &   & \cancel{2}
+    \end{tabular}
+  \end{table}
+  
+  \begin{itemize}
+  \item SCAN $a^2$ on coset $1$ 
+  \item $ 1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 3$ 
+  \item But we should have $ 1 \overset{a}{\rightarrow} \overset{a}{\rightarrow} 1$ 
+  \item Hence $1$ and $3$ describe the same coset, and they can be combined
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Coincidences}
+  Sometimes we may encounter a coincidence.
+
+  Example:
+  \begin{table}
+    \begin{tabular}{r | c c c c}
+      & $a$ & $a^{-1}$ \\ \hline
+      1 & 2 & 2\\
+      2 & \phantom{3} 1 \phantom{1} & 1 \\ \\
+    \end{tabular}
+  \end{table}
+  
+  \begin{itemize}
+  \item SCAN $a^2$ on coset $1$ 
+  \item $ 1 \overset{a}{\rightarrow} 2 \overset{a}{\rightarrow} 3$ 
+  \item But we should have $ 1 \overset{a}{\rightarrow} \overset{a}{\rightarrow} 1$ 
+  \item Hence $1$ and $3$ describe the same coset, and they can be combined
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Forcing a coincidence}
+  \begin{itemize}
+  \item Eventually we cannot continue because
+  \end{itemize}
+\end{frame}
 
 \end{document}
