@@ -385,16 +385,9 @@ InstallGlobalFunction(ExecuteJob, function(table, alphabet, reps, gens, label, r
           childTable,   # Copy of this table, to be modified
           childReps,    # Copy of coset representatives, to be modified
           newGen,       # Generator to be added for the new branch
-          subgp,        # Loop variable for subgroups
           descendants,  # List of subgroups found recursively in a branch
-          subgps,       # List of valid subgroups
-          tasks,        # List of threaded tasks
-          task,         # Loop variable
           numBranches,
           newJob;       # New job to be added to the work queue
-
-    subgps := [];
-    tasks := [];
 
     # Run Todd-Coxeter coset enumeration
     while Size(Filtered(table,t->t<>fail)) < maxCosets and not IsCompleteCosetTable(table) do
