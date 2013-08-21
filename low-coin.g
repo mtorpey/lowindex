@@ -6,7 +6,7 @@ DeclareGlobalFunction("Coincidence");
 DeclareGlobalFunction("MakeAssignment");
 DeclareGlobalFunction("Scan");
 DeclareGlobalFunction("FirstInClass");
-DeclareGlobalFunction("DescendantSubgroups");
+DeclareGlobalFunction("ExecuteJob");
 DeclareGlobalFunction("Work");
 DeclareGlobalFunction("LowIndexSubgroups");
 
@@ -375,11 +375,11 @@ end);
 
 
 #####
-# DescendantSubgroups(table, alphabet, label, relsX, maxIndex, maxCosets)
+# ExecuteJob(table, alphabet, label, relsX, maxIndex, maxCosets)
 # Recursively finds all the descendants of this coset table which correspond to
 # subgroups of index at most maxIndex subject to all the relations in relsX.
 #####
-InstallGlobalFunction(DescendantSubgroups, function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst)
+InstallGlobalFunction(ExecuteJob, function(table, alphabet, reps, gens, label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst)
     local rel, b,       # Loop variables
           a, x,         # Coset-letter pair with no entry in table
           childTable,   # Copy of this table, to be modified
@@ -431,7 +431,7 @@ InstallGlobalFunction(DescendantSubgroups, function(table, alphabet, reps, gens,
                 newGen := reps[a] * reps[b]^-1;
                 
                 if depthFirst then
-                    DescendantSubgroups(childTable,alphabet,ShallowCopy(reps),Concatenation(gens,[newGen]),b,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,true);
+                    ExecuteJob(childTable,alphabet,ShallowCopy(reps),Concatenation(gens,[newGen]),b,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,true);
                 else
                     # Add this to the work queue
                     newJob := rec(
@@ -453,11 +453,11 @@ end);
 
 
 #####
-# Work(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets)
+# Work(workQueue, resultsChan, numJobs, finish, alphabet, relsX, maxIndex, maxCosets)
 # Checks the work queue for available tasks, calculates subgroups, and
 # sends output to the results channel
 #####
-InstallGlobalFunction(Work, function(workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets, numWorkers)
+InstallGlobalFunction(Work, function(workQueue, resultsChan, numJobs, finish, alphabet, relsX, maxIndex, maxCosets, numWorkers)
     local j,            # Record describing a job to be done
           depthFirst;   # Whether to continue depth-first or not
     
@@ -478,14 +478,14 @@ InstallGlobalFunction(Work, function(workQueue, resultsChan, numJobs, fin, alpha
             depthFirst := numJobs[1] > numWorkers * 1.6;
         od;
         # Enter the function
-        DescendantSubgroups(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst);
+        ExecuteJob(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst);
         
         # Decrement the job counter
         atomic numJobs do
             numJobs[1] := numJobs[1] - 1;
             # If there are no jobs left, signal that all the work is done
             if numJobs[1] = 0 then
-                SignalSemaphore(fin);
+                SignalSemaphore(finish);
             fi;
         od;
     od;
@@ -518,7 +518,7 @@ InstallGlobalFunction(LowIndexSubgroups, function(G, maxIndex, numWorkers)
           workQueue,    # Channel used to communicate jobs to threads
           resultsChan,  # Channel for solutions
           numJobs,      # Counter of how many jobs have not been completed
-          fin;          # Semaphore activated when all work is complete
+          finish;          # Semaphore activated when all work is complete
 
     # Make some definitions
     gens := FreeGeneratorsOfFpGroup(G);
@@ -555,16 +555,16 @@ InstallGlobalFunction(LowIndexSubgroups, function(G, maxIndex, numWorkers)
     # Create worker threads
     workQueue := CreateChannel();
     numJobs := [0];
-    fin := CreateSemaphore();
+    finish := CreateSemaphore();
     ShareObj(numJobs);
     resultsChan := CreateChannel();
-    workers := List([1..numWorkers], i->CreateThread(Work, workQueue, resultsChan, numJobs, fin, alphabet, relsX, maxIndex, maxCosets, numWorkers));
+    workers := List([1..numWorkers], i->CreateThread(Work, workQueue, resultsChan, numJobs, finish, alphabet, relsX, maxIndex, maxCosets, numWorkers));
 
     # Start function
-    DescendantSubgroups(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,false);
+    ExecuteJob(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,false)
     
     # Wait for all threads to finish, then kill all threads
-    WaitSemaphore(fin);
+    WaitSemaphore(finish);
     SendChannel(workQueue,fail);
     Perform(workers,WaitThread);
     
