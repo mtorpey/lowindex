@@ -214,10 +214,10 @@
 \begin{frame}
   \frametitle{Forcing a coincidence}
   \begin{itemize}
-  \item Eventually we cannot continue because either:
+  \item Eventually we cannot continue because either: \pause
     \begin{itemize}
     \item The coset table is complete\pause, or
-    \item We have defined $n$ cosets, the maximum number
+    \item We have defined $n$ cosets, the maximum number \pause
     \end{itemize}
   \item If the table is complete, we have a subgroup \pause
   \item In any case, we now ``force a coincidence''
@@ -295,7 +295,16 @@ DescendantSubgroups := function(...)
     return subgps;
 end;
 \end{verbatim}
+\end{frame}
 
+\begin{frame}
+  \frametitle{Using Tasks}
+  \framesubtitle{Speedup}
+  \begin{itemize}
+  \item Effective up to 4 cores \pause
+  \item Little speedup beyond 4 cores \pause
+  \item Enormous time for large problems -- overheads
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -307,7 +316,7 @@ end;
   \item \texttt{resultsChan} -- Channel used to store results \pause
   \item \texttt{finish} -- Semaphore indicating that all work is complete \pause
   \item \texttt{Work} -- Function executed by each new thread \pause
-  \item \texttt{ExecuteJob} -- New name for DescendantSubgroups
+  \item \texttt{ExecuteJob} -- New name for \texttt{DescendantSubgroups}
   \end{itemize}
 \end{frame}
 
@@ -317,7 +326,7 @@ end;
 \begin{verbatim}
 LowIndexSubgroups(G, maxIndex, numWorkers)
     ...
-    <create workQueue, resultsChan, numJobs, and finish>
+    <Create workQueue, resultsChan, numJobs, and finish>
 
     workers := List([1..numWorkers],
                     i->CreateThread(Work, <args>)
@@ -355,6 +364,76 @@ Work := function(workQueue, resultsChan, ...)
     od;
 end;
 \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Using Worker Threads}
+  \framesubtitle{\texttt{ExecuteJob} function}
+\begin{verbatim}
+ExecuteJob := function(...)
+    CosetEnumeration(...);
+    if IsComplete(table) then
+        SendChannel(resultsChan, thisSubgroup);
+    fi;
+    for each pair of cosets (i,j) do
+        newJob := rec(table := table,
+                      label := b,
+                      reps := reps,
+                      gens := Concatenation(gens,[newGen])
+                     );
+        SendChannel(workQueue, newJob);
+    od;
+    atomic numJobs do
+        numJobs := numJobs + 1;
+    od;
+end;
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Using Worker Threads}
+  \framesubtitle{Speedup} \pause
+  \begin{itemize}
+  \item Effective up to 4 cores
+  \item Little speedup beyond 4 cores \pause
+  \item Huge number of jobs created -- all threads attempting to read from workQueue very often, resulting in a bottleneck \pause
+  \item If only workers could explore subtrees themselves, so long as all cores are busy...
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{``Minimal'' Job Sharing} \pause
+  \begin{itemize}
+  \item If every thread has work to do, a thread processes a complete job depth-first with no communication \pause
+  \item If there is no work left on the queue, a thread must branch \pause
+  \item Avoids either heavy communication on a single channel, or long-idle workers \pause
+  \item New parameter in \texttt{ExecuteJob} -- \texttt{depthFirst} \pause
+  \end{itemize}
+In the \texttt{Work} function:
+\begin{verbatim}
+atomic readonly numJobs do
+    depthFirst := numJobs > numWorkers;
+od;
+\end{verbatim}
+\end{frame}
+
+\begin{frame}
+  \frametitle{``Minimal'' Job Sharing}
+  \framesubtitle{Improvements}
+  Still have workers idle, waiting for another thread to branch \pause
+
+  Possible improvements:
+  \begin{itemize}
+  \item Decide whether to branch \textit{inside} depth-first search \pause
+  \item Always keep a ``buffer'' of items on the queue, to reduce idle workers -- means more breadth-first \pause
+  \item Attempt to predict size of subtree and ``branch intelligently'' \pause
+  \end{itemize}
+
+  Other approaches:
+  \begin{itemize}
+  \item Retrospective job sharing \pause
+  \item Random depth-first search
+  \end{itemize}
 \end{frame}
 
 \end{document}
