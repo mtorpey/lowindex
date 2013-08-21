@@ -32,6 +32,7 @@
   \begin{itemize}
   \item ``Forced coincidence'' approach
   \item Utilises Todd-Coxeter method for coset enumeration
+  \item Expand coset table defining no more than $n$ cosets, for some $n \geq N$.
   \end{itemize}
 \end{frame}
 
@@ -212,8 +213,41 @@
 \begin{frame}
   \frametitle{Forcing a coincidence}
   \begin{itemize}
-  \item Eventually we cannot continue because
+  \item Eventually we cannot continue because either:
+    \begin{itemize}
+    \item The coset table is complete\pause, or
+    \item We have defined $n$ cosets, the maximum number
+    \end{itemize}
+  \item If the table is complete, we have a subgroup \pause
+  \item In any case, we now ``force a coincidence''
   \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Forcing a coincidence}
+  \begin{itemize}
+  \item Take some pair of cosets $i$ and $j$, and force $i=j$ \pause
+  \item The resultant table now corresponds to a new subgroup with a new generator $\alpha_i \alpha_j^{-1}$ constructed from the coset representatives $\alpha_i$ and $\alpha_j$ \pause
+  \item Each choice of $(i,j)$ is considered separately as a new branch in the search tree \pause
+  \item To avoid duplicates, each new branch is assigned a ``label'', the higher of the combined cosets \pause
+  \item We only consider coincidences for which $i$ and $j$ are not both less than \texttt{label}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Characteristics}
+  We have a backtrack search that: \pause
+  \begin{itemize}
+  \item is unpredictable in shape \pause
+  \item is unpredictable in size \pause
+  \item may return results before reaching a leaf \pause
+  \item can be split into independent branches
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Parallelisation}
+
 \end{frame}
 
 \end{document}
