@@ -1,3 +1,4 @@
+%TODO: Look up author name; references; check task code
 \documentclass{beamer}
 \usepackage{amsmath}
 \usepackage{color}
@@ -247,7 +248,113 @@
 
 \begin{frame}
   \frametitle{Parallelisation}
+  Two approaches taken:
+  \begin{itemize}
+  \item Tasks (using \texttt{RunTask}, \texttt{WaitTask}\dots)
+  \item Worker threads (\texttt{CreateThread}, \texttt{WaitThread}\dots)
+  \end{itemize}
+\end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Sequential implementation}
+  \framesubtitle{Recursion}
+\begin{verbatim}
+DescendantSubgroups := function(...)
+    subgps := [];
+    CosetEnumeration(...);
+    if IsComplete(table) then
+        Add(subgps, thisSubgroup);
+    fi;
+    for each pair of cosets (i,j) do
+        Append(subgps,
+               DescendantSubgroups(<table with i=j>, ...)
+              );
+    od;
+    return subgps;
+end;
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Using Tasks}
+  \framesubtitle{The ``shotgun'' approach}
+\begin{verbatim}
+DescendantSubgroups := function(...)
+    subgps := [];
+    tasks := [];
+    CosetEnumeration(...);
+    if IsComplete(table) then
+        Add(subgps, thisSubgroup);
+    fi;
+    for each pair of cosets (i,j) do
+        Add(tasks, RunTask(DescendantSubgroups, <args>) );
+    od;
+    for task in tasks do
+        Append(subgps, TaskResult(task) );
+    od;
+    return subgps;
+end;
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Using Worker Threads}
+  \framesubtitle{Objects} \pause
+  \begin{itemize}
+  \item \texttt{workQueue} -- Channel of jobs to be done \pause
+  \item \texttt{numJobs} -- Number of jobs still incomplete \pause
+  \item \texttt{resultsChan} -- Channel used to store results \pause
+  \item \texttt{finish} -- Semaphore indicating that all work is complete \pause
+  \item \texttt{Work} -- Function executed by each new thread \pause
+  \item \texttt{ExecuteJob} -- New name for DescendantSubgroups
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Using Worker Threads}
+  \framesubtitle{Top-level function}
+\begin{verbatim}
+LowIndexSubgroups(G, maxIndex, numWorkers)
+    ...
+    <create workQueue, resultsChan, numJobs, and finish>
+
+    workers := List([1..numWorkers],
+                    i->CreateThread(Work, <args>)
+                   );
+    ExecuteJob(..., workQueue, resultsChan, numJobs);
+
+    WaitSemaphore(finish);
+    SendChannel(workQueue, fail);
+    Perform(workers, WaitThread);
+
+    <Extract all the results from resultsChan>
+    ...
+end;
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Using Worker Threads}
+  \framesubtitle{\texttt{Work} function}
+\begin{verbatim}
+Work := function(workQueue, resultsChan, ...)
+    while true do
+        j := ReceiveChannel(workQueue);
+        if j = fail then
+            SendChannel(workQueue,fail);
+            break;
+        fi;
+        ExecuteJob(j.table, j.label, ...);
+        atomic numJobs do
+            numJobs := numJobs - 1;
+            if numJobs = 0 then
+                SignalSemaphore(finish);
+            fi;
+        od;
+    od;
+end;
+\end{verbatim}
 \end{frame}
 
 \end{document}
