@@ -468,7 +468,7 @@ InstallGlobalFunction(Work, function(workQueue, resultsChan, numJobs, finish, al
         # If there are jobs available, use depth-first
         # Otherwise, create new jobs with breadth-first
         atomic readonly numJobs do
-            depthFirst := numJobs[1] > numWorkers * 1.6;
+            depthFirst := numJobs[1] > numWorkers * 2;
         od;
         # Enter the function
         ExecuteJob(j.table, alphabet, j.reps, j.gens, j.label, relsX, maxIndex, maxCosets, workQueue, resultsChan, numJobs, depthFirst);
@@ -554,7 +554,7 @@ InstallGlobalFunction(LowIndexSubgroups, function(G, maxIndex, numWorkers)
     workers := List([1..numWorkers], i->CreateThread(Work, workQueue, resultsChan, numJobs, finish, alphabet, relsX, maxIndex, maxCosets, numWorkers));
 
     # Start function
-    ExecuteJob(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,false)
+    ExecuteJob(table,alphabet,reps,[],2,relsX,maxIndex,maxCosets,workQueue,resultsChan,numJobs,false);
     
     # Wait for all threads to finish, then kill all threads
     WaitSemaphore(finish);
