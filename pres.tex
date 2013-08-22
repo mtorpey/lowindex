@@ -23,7 +23,7 @@
   \begin{itemize}
   \item<2-> $X = $ A set of generators, e.g.~$\{a,b\}$.
   \item<3-> $R = $ A set of relators, e.g.~$\{a^2,b^3,(ab)^5\}$ such that $a^2=b^3=(ab)^5=1$.
-  \item<4-> $G = \{a,b | a^2=b^3=(ab)^5=1\} \cong A_5$
+  \item<4-> $G = \langle a,b | a^2=b^3=(ab)^5=1\rangle \cong A_5$
   \end{itemize}
 \end{frame}
 
@@ -219,18 +219,10 @@
     \item We have defined $n$ cosets, the maximum number \pause
     \end{itemize}
   \item If the table is complete, we have a subgroup \pause
-  \item In any case, we now ``force a coincidence''
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Forcing a coincidence}
-  \begin{itemize}
+  \item In any case, we now ``force a coincidence'' \pause
   \item Take some pair of cosets $i$ and $j$, and force $i=j$ \pause
   \item The resultant table now corresponds to a new subgroup with a new generator $\alpha_i \alpha_j^{-1}$ constructed from the coset representatives $\alpha_i$ and $\alpha_j$ \pause
-  \item Each choice of $(i,j)$ is considered separately as a new branch in the search tree \pause
-  \item To avoid duplicates, each new branch is assigned a ``label'', the higher of the combined cosets \pause
-  \item We only consider coincidences for which $i$ and $j$ are not both less than \texttt{label}
+  \item Each choice of $(i,j)$ is considered separately as a new branch in the search tree
   \end{itemize}
 \end{frame}
 
@@ -381,9 +373,9 @@ ExecuteJob := function(...)
                       gens := Concatenation(gens,[newGen])
                      );
         SendChannel(workQueue, newJob);
-    od;
-    atomic numJobs do
-        numJobs := numJobs + 1;
+        atomic numJobs do
+            numJobs := numJobs + 1;
+        od;
     od;
 end;
 \end{verbatim}
@@ -413,15 +405,15 @@ In the \texttt{Work} function:
 atomic readonly numJobs do
     depthFirst := numJobs > numWorkers;
 od;
-\end{verbatim}
+\end{verbatim} \pause
+\begin{itemize}
+\item Still have workers idle, waiting for another thread to branch
+\end{itemize}
+
 \end{frame}
 
 \begin{frame}
-  \frametitle{``Minimal'' Job Sharing}
-  \framesubtitle{Improvements}
-  Still have workers idle, waiting for another thread to branch \pause
-
-  Possible improvements:
+  \frametitle{Improvements}
   \begin{itemize}
   \item Decide whether to branch \textit{inside} depth-first search \pause
   \item Always keep a ``buffer'' of items on the queue, to reduce idle workers -- means more breadth-first \pause
