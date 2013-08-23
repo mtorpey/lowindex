@@ -7,7 +7,7 @@ low-coin.g -- Parallelised code for the "forced coincidence" low-index subgroups
 
 use.g -- "Useful" file defining a variety of finitely presented groups for testing, along with a benchmarking function
 
-test.g -- Simply reads low-coin.g and use.g and runs a variety of benchmarking tests on 1,2,4,8 and 16 cores, which should take something like 90 minutes to complete
+test.g -- Simply reads low-coin.g and use.g and runs a variety of benchmarking tests on 1,2,4,8 and 16 cores, which should take something like 90 minutes to complete.  Makes assumptions about the location of low-coin.g and use.g
 
 bench.ods -- Benchmarking data collected in the past with test.g -- The Depth_Buffer sheet reflects the current state of the program
 
