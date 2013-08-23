@@ -1,0 +1,16 @@
+Author: Michael Torpey
+Date: 2013-08-23
+This directory contains my code for a parallel implementation of the low-index subgroups algorithm in HPC-GAP.  This work was carried out by me as a summer research project at the University of St Andrews in 2013.
+
+FILES:
+low-coin.g -- Parallelised code for the "forced coincidence" low-index subgroups algorithm.  Other approaches to parallelisation can be found in older revisions of this file, in this repository.  Most of these approaches are explained in pres.tex
+
+use.g -- "Useful" file defining a variety of finitely presented groups for testing, along with a benchmarking function
+
+test.g -- Simply reads low-coin.g and use.g and runs a variety of benchmarking tests on 1,2,4,8 and 16 cores, which should take something like 90 minutes to complete
+
+bench.ods -- Benchmarking data collected in the past with test.g -- The Depth_Buffer sheet reflects the current state of the program
+
+pres.tex -- Presentation which discusses this project: the algorithm and approaches to parallelisation.  Build a PDF using "pdflatex pres.tex" (on a UNIX system with texlive) and open in presentation mode
+
+low-sims.g -- Sequential implementation of Sims' alternative to the "forced coincidence" method, as described in the Handbook of Computational Group Theory by Holt, Eick & O'Brien.  Abandoned in favour of low-coin.g
